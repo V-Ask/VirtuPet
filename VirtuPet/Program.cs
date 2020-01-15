@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -37,7 +36,7 @@ namespace VirtuPet
                 {
                     string[] file = File.ReadAllLines(dataFile);
                     pet = new Pet(file[0], DateTime.Parse(file[8]), float.Parse(file[2]),
-                        float.Parse(file[3]), float.Parse(file[4]), int.Parse(file[5]), int.Parse(file[6]), int.Parse(file[7]), DateTime.Parse(file[1]));
+                        float.Parse(file[3]), float.Parse(file[4]), int.Parse(file[5]), int.Parse(file[6]), int.Parse(file[7]), DateTime.Parse(file[1]), dataFile);
                     return;
                 }
             }
@@ -46,6 +45,11 @@ namespace VirtuPet
 
         public void PetInputSequence()
         {
+            if (pet.Dead())
+            {
+                pet.Kill(dataFile);
+                Program.Start();
+            }
             Console.Clear();
             Console.WriteLine("[0] Show status" + "\n" +
                 "[1] Feed pet" + "\n" +
@@ -55,11 +59,6 @@ namespace VirtuPet
                 "[5] Kill pet" + "\n" +
                 "[6] Quit application");
             string input = Console.ReadLine();
-            if(pet.Dead())
-            {
-                pet.Kill(dataFile);
-                Program.Start();
-            }
             switch (input)
             {
                 case "0":
@@ -93,6 +92,7 @@ namespace VirtuPet
                     File.Delete(dataFile);
                     File.AppendAllText(dataFile, pet.name + "\n"+ DateTime.Now + "\n" + pet.hunger + "\n" + pet.exhaustion + "\n" + pet.happiness + "\n" + pet.hungerTime 
                         + "\n" + pet.exhaustTime + "\n" + pet.boreTime + "\n" + pet.birth);
+                    Environment.Exit(0);
                     break;
                 default:
                     Console.WriteLine("Input \"" + input + "\" is not valid.");
@@ -163,13 +163,13 @@ namespace VirtuPet
             InitTimers();
         }
 
-        public Pet(string name, DateTime birth, float hunger, float exhaustion, float happiness, int hungerTime, int exhaustTime, int boreTime, DateTime appClose)
+        public Pet(string name, DateTime birth, float hunger, float exhaustion, float happiness, int hungerTime, int exhaustTime, int boreTime, DateTime appClose, string dataFile)
         {
             TimeSpan elapsedTime = DateTime.Now - appClose;
             age = (int)DateTime.Now.Subtract(birth).TotalMinutes;
-            this.hunger = (int)((float)elapsedTime.TotalSeconds / hungerTime + hunger);
-            this.exhaustion = (int)((float)elapsedTime.TotalSeconds / exhaustTime + exhaustion);
-            this.happiness = (int)((float)elapsedTime.TotalSeconds / boreTime + happiness);
+            this.hunger = (int)((float)elapsedTime.TotalMilliseconds / hungerTime + hunger);
+            this.exhaustion = (int)((float)elapsedTime.TotalMilliseconds / exhaustTime + exhaustion);
+            this.happiness = (int)((float)elapsedTime.TotalMilliseconds / boreTime + happiness);
             this.name = name;
             this.birth = birth;
             this.hungerTime = hungerTime;
@@ -177,12 +177,11 @@ namespace VirtuPet
             this.boreTime = boreTime;
             InitTimers();
         }
-        public float exhaustion { get; set; }
-        public int age { get; set; }
-        public string name { get; set; }
-        public float hunger { get; set; }
-        public float happiness { get; set; }
-        public bool dead = false;
+        public float exhaustion;
+        public int age;
+        public string name;
+        public float hunger;
+        public float happiness;
 
         public int hungerTime;
         public int exhaustTime;
@@ -225,6 +224,14 @@ namespace VirtuPet
             File.Delete(dataFile);
             Console.WriteLine("\"" + name + "\" is dead.");
             DisposeTimers();
+            Thread.Sleep(5000);
+            Program.Start();
+        }
+
+        public void KillBoot(string dataFile)
+        {
+            File.Delete(dataFile);
+            Console.WriteLine("\"" + name + "\" is dead.");
             Thread.Sleep(5000);
             Program.Start();
         }
@@ -288,19 +295,19 @@ namespace VirtuPet
 
         public bool Dead()
         {
-            if (exhaustion == 100)
+            if (exhaustion >= 100)
             {
                 Console.Clear();
                 Console.WriteLine("\"" + name + "\" is too exhausted. He/she collapses, never to wake up again.");
                 return true;
             }
-            if (happiness == 0)
+            if (happiness <= 0)
             {
                 Console.Clear();
                 Console.WriteLine("\"" + name + "\" was so bored, he/she (literally) died of boredom.");
                 return true;
             }
-            if (hunger == 100)
+            if (hunger >= 100)
             {
                 Console.Clear();
                 Console.WriteLine("Not being fed causes \"" + name + "\" to die of hunger.");
